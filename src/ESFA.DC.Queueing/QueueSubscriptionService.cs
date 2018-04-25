@@ -62,6 +62,12 @@ namespace ESFA.DC.Queueing
             {
                 T obj = _serialisationService.Deserialize<T>(Encoding.UTF8.GetString(message.Body));
 
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    await _queueClient.AbandonAsync(message.SystemProperties.LockToken);
+                    return;
+                }
+
                 if (await _callback.Invoke(obj, cancellationToken))
                 {
                     await _queueClient.CompleteAsync(message.SystemProperties.LockToken);
