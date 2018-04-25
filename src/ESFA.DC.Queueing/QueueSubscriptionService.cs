@@ -32,12 +32,12 @@ namespace ESFA.DC.Queueing
         {
             if (_queueClient == null)
             {
-                //_queueClient = new QueueClient(_queueConfiguration.ConnectionString, _queueConfiguration.QueueName, ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromSeconds(_queueConfiguration.MinimumBackoffSeconds), TimeSpan.FromSeconds(_queueConfiguration.MaximumBackoffSeconds), _queueConfiguration.MaximumRetryCount));
+                _queueClient = new QueueClient(_queueConfiguration.ConnectionString, _queueConfiguration.QueueName, ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromSeconds(_queueConfiguration.MinimumBackoffSeconds), TimeSpan.FromSeconds(_queueConfiguration.MaximumBackoffSeconds), _queueConfiguration.MaximumRetryCount));
             }
 
             MessageHandlerOptions messageHandlerOptions = new MessageHandlerOptions(ExceptionReceivedHandler)
             {
-                //MaxConcurrentCalls = _queueConfiguration.MaxConcurrentCalls,
+                MaxConcurrentCalls = _queueConfiguration.MaxConcurrentCalls,
                 AutoComplete = false
             };
             _queueClient.RegisterMessageHandler(Handler, messageHandlerOptions);

@@ -26,7 +26,7 @@ namespace ESFA.DC.Queueing
         {
             if (_queueClient == null)
             {
-                // _queueClient = new QueueClient(_queueConfiguration.ConnectionString, _queueConfiguration.QueueName, ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromSeconds(_queueConfiguration.MinimumBackoffSeconds), TimeSpan.FromSeconds(_queueConfiguration.MaximumBackoffSeconds), _queueConfiguration.MaximumRetryCount));
+                _queueClient = new QueueClient(_queueConfiguration.ConnectionString, _queueConfiguration.QueueName, ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromSeconds(_queueConfiguration.MinimumBackoffSeconds), TimeSpan.FromSeconds(_queueConfiguration.MaximumBackoffSeconds), _queueConfiguration.MaximumRetryCount));
             }
 
             await _queueClient.SendAsync(new Message(Encoding.UTF8.GetBytes(_serialisationService.Serialize(obj))));
