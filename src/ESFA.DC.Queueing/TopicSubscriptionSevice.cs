@@ -38,15 +38,56 @@ namespace ESFA.DC.Queueing
                 _subscriptionClient = new SubscriptionClient(
                     _queueConfiguration.ConnectionString,
                     _queueConfiguration.TopicName,
-                    _queueConfiguration.sub
+                    "test",
                     ReceiveMode.PeekLock,
                     retryExponential);
             }
+
+            MessageHandlerOptions messageHandlerOptions = new MessageHandlerOptions(ExceptionReceivedHandler)
+            {
+                MaxConcurrentCalls = _queueConfiguration.MaxConcurrentCalls,
+                AutoComplete = false
+            };
+
+            _subscriptionClient.RegisterMessageHandler(Handler, messageHandlerOptions);
+            _callback = callback;
         }
 
-        public Task UnsubscribeAsync()
+        public async Task UnsubscribeAsync()
         {
-            throw new NotImplementedException();
+            await _subscriptionClient.CloseAsync();
+            _subscriptionClient = null;
+            _callback = null;
+        }
+
+        private async Task Handler(Message message, CancellationToken cancellationToken)
+        {
+            try
+            {
+                T obj = _serialisationService.Deserialize<T>(Encoding.UTF8.GetString(message.Body));
+
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    await _subscriptionClient.AbandonAsync(message.SystemProperties.LockToken);
+                    return;
+                }
+
+                if (await _callback.Invoke(obj, cancellationToken))
+                {
+                    await _subscriptionClient.CompleteAsync(message.SystemProperties.LockToken);
+                }
+            }
+            catch (Exception ex)
+            {
+                await _subscriptionClient.AbandonAsync(message.SystemProperties.LockToken);
+                _logger.LogError("Error in Topic handler", ex);
+            }
+        }
+
+        private Task ExceptionReceivedHandler(ExceptionReceivedEventArgs arg)
+        {
+            _logger.LogError("Failed to receive from Auditing message queue", arg.Exception);
+            return Task.CompletedTask;
         }
     }
 }
