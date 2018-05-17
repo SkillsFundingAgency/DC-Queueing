@@ -8,6 +8,8 @@
 
         string TopicName { get; }
 
+        string SubscriptionName { get; }
+
         int MaxConcurrentCalls { get; }
 
         int MinimumBackoffSeconds { get; }
