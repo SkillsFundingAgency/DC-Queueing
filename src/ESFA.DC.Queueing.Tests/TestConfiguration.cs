@@ -9,7 +9,7 @@ namespace ESFA.DC.Queueing.Tests
         [Fact]
         public void TestConfigurationObject()
         {
-            IQueueConfiguration configuration = new TestQueueConfiguration("ConnectionString", "QueueName", 10, "TopicName", 100, 1000, 10000);
+            IQueueConfiguration configuration = new TestQueueConfiguration("ConnectionString", "QueueName", 10, "TopicName", "SubscriptionName", 100, 1000, 10000);
 
             configuration.MaxConcurrentCalls.Should().Be(10);
             configuration.ConnectionString.Should().Be("ConnectionString");

@@ -13,7 +13,7 @@ namespace ESFA.DC.Queueing
     {
         private readonly IQueueConfiguration _queueConfiguration;
         private readonly ISerializationService _serialisationService;
-        private  ITopicClient _topicClient;
+        private ITopicClient _topicClient;
 
         public TopicPublishService(IQueueConfiguration queueConfiguration, ISerializationService serialisationService)
         {
