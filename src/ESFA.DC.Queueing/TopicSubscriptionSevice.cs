@@ -38,7 +38,7 @@ namespace ESFA.DC.Queueing
                 _subscriptionClient = new SubscriptionClient(
                     _queueConfiguration.ConnectionString,
                     _queueConfiguration.TopicName,
-                    "test",
+                    _queueConfiguration.SubscriptionName,
                     ReceiveMode.PeekLock,
                     retryExponential);
             }
