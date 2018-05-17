@@ -11,13 +11,13 @@ namespace ESFA.DC.Queueing
     public sealed class TopicPublishService<T> : ITopicPublishService<T>, IDisposable
         where T : new()
     {
-        private readonly IQueueConfiguration _queueConfiguration;
+        private readonly ITopicConfiguration _topicConfiguration;
         private readonly ISerializationService _serialisationService;
         private ITopicClient _topicClient;
 
-        public TopicPublishService(IQueueConfiguration queueConfiguration, ISerializationService serialisationService)
+        public TopicPublishService(ITopicConfiguration topicConfiguration, ISerializationService serialisationService)
         {
-            _queueConfiguration = queueConfiguration;
+            _topicConfiguration = topicConfiguration;
             _serialisationService = serialisationService;
         }
 
@@ -26,13 +26,13 @@ namespace ESFA.DC.Queueing
             if (_topicClient == null)
             {
                 var retryPolicy = new RetryExponential(
-                        TimeSpan.FromSeconds(_queueConfiguration.MinimumBackoffSeconds),
-                        TimeSpan.FromSeconds(_queueConfiguration.MaximumBackoffSeconds),
-                        _queueConfiguration.MaximumRetryCount);
+                        TimeSpan.FromSeconds(_topicConfiguration.MinimumBackoffSeconds),
+                        TimeSpan.FromSeconds(_topicConfiguration.MaximumBackoffSeconds),
+                        _topicConfiguration.MaximumRetryCount);
 
                 _topicClient = new TopicClient(
-                    _queueConfiguration.ConnectionString,
-                    _queueConfiguration.TopicName,
+                    _topicConfiguration.ConnectionString,
+                    _topicConfiguration.TopicName,
                     retryPolicy);
             }
 

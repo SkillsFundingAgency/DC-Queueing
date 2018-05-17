@@ -12,16 +12,16 @@ namespace ESFA.DC.Queueing
 {
     public class TopicSubscriptionSevice<T> : ITopicSubscriptionService<T>
     {
-        private readonly IQueueConfiguration _queueConfiguration;
+        private readonly ITopicConfiguration _topicConfiguration;
         private readonly ISerializationService _serialisationService;
         private readonly ILogger _logger;
         private ISubscriptionClient _subscriptionClient;
 
         private Func<T, CancellationToken, Task<bool>> _callback;
 
-        public TopicSubscriptionSevice(IQueueConfiguration queueConfiguration, ISerializationService serialisationService, ILogger logger)
+        public TopicSubscriptionSevice(ITopicConfiguration topicConfiguration, ISerializationService serialisationService, ILogger logger)
         {
-            _queueConfiguration = queueConfiguration;
+            _topicConfiguration = topicConfiguration;
             _serialisationService = serialisationService;
             _logger = logger;
         }
@@ -31,21 +31,21 @@ namespace ESFA.DC.Queueing
             if (_subscriptionClient == null)
             {
                 var retryExponential = new RetryExponential(
-                    TimeSpan.FromSeconds(_queueConfiguration.MinimumBackoffSeconds),
-                    TimeSpan.FromSeconds(_queueConfiguration.MaximumBackoffSeconds),
-                    _queueConfiguration.MaximumRetryCount);
+                    TimeSpan.FromSeconds(_topicConfiguration.MinimumBackoffSeconds),
+                    TimeSpan.FromSeconds(_topicConfiguration.MaximumBackoffSeconds),
+                    _topicConfiguration.MaximumRetryCount);
 
                 _subscriptionClient = new SubscriptionClient(
-                    _queueConfiguration.ConnectionString,
-                    _queueConfiguration.TopicName,
-                    _queueConfiguration.SubscriptionName,
+                    _topicConfiguration.ConnectionString,
+                    _topicConfiguration.TopicName,
+                    _topicConfiguration.SubscriptionName,
                     ReceiveMode.PeekLock,
                     retryExponential);
             }
 
             MessageHandlerOptions messageHandlerOptions = new MessageHandlerOptions(ExceptionReceivedHandler)
             {
-                MaxConcurrentCalls = _queueConfiguration.MaxConcurrentCalls,
+                MaxConcurrentCalls = _topicConfiguration.MaxConcurrentCalls,
                 AutoComplete = false
             };
 
