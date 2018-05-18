@@ -21,7 +21,7 @@ namespace ESFA.DC.Queueing
             _serialisationService = serialisationService;
         }
 
-        public async Task PublishAsync(T obj)
+        public async Task PublishAsync(T obj, IDictionary<string, object> properties, string messageLabel)
         {
             if (_topicClient == null)
             {
@@ -36,7 +36,19 @@ namespace ESFA.DC.Queueing
                     retryPolicy);
             }
 
-            await _topicClient.SendAsync(new Message(Encoding.UTF8.GetBytes(_serialisationService.Serialize(obj))));
+            // create Message object with object parameter
+            var message = new Message(Encoding.UTF8.GetBytes(_serialisationService.Serialize(obj)))
+            {
+                Label = messageLabel
+            };
+
+            // populate the properties for the SQLfilter on Topics
+            foreach (var property in properties)
+            {
+                message.UserProperties.Add(property);
+            }
+
+            await _topicClient.SendAsync(message);
         }
 
         public void Dispose()
