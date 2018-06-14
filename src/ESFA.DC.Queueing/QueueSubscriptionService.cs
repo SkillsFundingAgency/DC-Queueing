@@ -9,30 +9,35 @@ using Microsoft.Azure.ServiceBus;
 
 namespace ESFA.DC.Queueing
 {
-    public sealed class QueueSubscriptionService<T> : IQueueSubscriptionService<T>
+    public sealed class QueueSubscriptionService<T> : BaseSubscriptionService<T>, IQueueSubscriptionService<T>
     {
-        private readonly ILogger _logger;
-
         private readonly IQueueConfiguration _queueConfiguration;
 
         private readonly ISerializationService _serialisationService;
 
-        private QueueClient _queueClient;
-
-        private Func<T, CancellationToken, Task<bool>> _callback;
+        private IQueueClient _queueClient;
 
         public QueueSubscriptionService(IQueueConfiguration queueConfiguration, ISerializationService serialisationService, ILogger logger)
+        : base(logger)
         {
             _queueConfiguration = queueConfiguration;
             _serialisationService = serialisationService;
-            _logger = logger;
         }
 
-        public void Subscribe(Func<T, CancellationToken, Task<bool>> callback)
+        public void Subscribe(Func<T, CancellationToken, Task<IQueueCallbackResult>> callback)
         {
             if (_queueClient == null)
             {
-                _queueClient = new QueueClient(_queueConfiguration.ConnectionString, _queueConfiguration.QueueName, ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromSeconds(_queueConfiguration.MinimumBackoffSeconds), TimeSpan.FromSeconds(_queueConfiguration.MaximumBackoffSeconds), _queueConfiguration.MaximumRetryCount));
+                var retryExponential = new RetryExponential(
+                    TimeSpan.FromSeconds(_queueConfiguration.MinimumBackoffSeconds),
+                    TimeSpan.FromSeconds(_queueConfiguration.MaximumBackoffSeconds),
+                    _queueConfiguration.MaximumRetryCount);
+
+                _queueClient = new QueueClient(
+                    _queueConfiguration.ConnectionString,
+                    _queueConfiguration.QueueName,
+                    ReceiveMode.PeekLock,
+                    retryExponential);
             }
 
             MessageHandlerOptions messageHandlerOptions = new MessageHandlerOptions(ExceptionReceivedHandler)
@@ -40,6 +45,7 @@ namespace ESFA.DC.Queueing
                 MaxConcurrentCalls = _queueConfiguration.MaxConcurrentCalls,
                 AutoComplete = false
             };
+
             _queueClient.RegisterMessageHandler(Handler, messageHandlerOptions);
             _callback = callback;
         }
@@ -49,11 +55,6 @@ namespace ESFA.DC.Queueing
             await _queueClient.CloseAsync();
             _queueClient = null;
             _callback = null;
-        }
-
-        private async Task ExceptionReceivedHandler(ExceptionReceivedEventArgs arg)
-        {
-            _logger.LogError("Failed to receive from Auditing message queue", arg.Exception);
         }
 
         private async Task Handler(Message message, CancellationToken cancellationToken)
@@ -68,14 +69,19 @@ namespace ESFA.DC.Queueing
                     return;
                 }
 
-                if (await _callback.Invoke(obj, cancellationToken))
+                IQueueCallbackResult queueCallbackResult = await _callback.Invoke(obj, cancellationToken);
+                if (queueCallbackResult.Result)
                 {
                     await _queueClient.CompleteAsync(message.SystemProperties.LockToken);
+                }
+                else
+                {
+                    await _queueClient.AbandonAsync(message.SystemProperties.LockToken, GetProperties(message.UserProperties, queueCallbackResult.Exception));
                 }
             }
             catch (Exception ex)
             {
-                await _queueClient.AbandonAsync(message.SystemProperties.LockToken);
+                await _queueClient.AbandonAsync(message.SystemProperties.LockToken, GetProperties(message.UserProperties, ex));
                 _logger.LogError("Error in queue handler", ex);
             }
         }

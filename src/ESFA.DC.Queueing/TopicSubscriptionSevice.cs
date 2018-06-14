@@ -9,23 +9,22 @@ using Microsoft.Azure.ServiceBus;
 
 namespace ESFA.DC.Queueing
 {
-    public class TopicSubscriptionSevice<T> : ITopicSubscriptionService<T>
+    public class TopicSubscriptionSevice<T> : BaseSubscriptionService<T>, ITopicSubscriptionService<T>
     {
         private readonly ITopicConfiguration _topicConfiguration;
+
         private readonly ISerializationService _serialisationService;
-        private readonly ILogger _logger;
+
         private ISubscriptionClient _subscriptionClient;
 
-        private Func<T, CancellationToken, Task<bool>> _callback;
-
         public TopicSubscriptionSevice(ITopicConfiguration topicConfiguration, ISerializationService serialisationService, ILogger logger)
+            : base(logger)
         {
             _topicConfiguration = topicConfiguration;
             _serialisationService = serialisationService;
-            _logger = logger;
         }
 
-        public void Subscribe(Func<T, CancellationToken, Task<bool>> callback)
+        public void Subscribe(Func<T, CancellationToken, Task<IQueueCallbackResult>> callback)
         {
             if (_subscriptionClient == null)
             {
@@ -71,7 +70,8 @@ namespace ESFA.DC.Queueing
                     return;
                 }
 
-                if (await _callback.Invoke(obj, cancellationToken))
+                IQueueCallbackResult queueCallbackResult = await _callback.Invoke(obj, cancellationToken);
+                if (queueCallbackResult.Result)
                 {
                     await _subscriptionClient.CompleteAsync(message.SystemProperties.LockToken);
                 }
@@ -81,12 +81,6 @@ namespace ESFA.DC.Queueing
                 await _subscriptionClient.AbandonAsync(message.SystemProperties.LockToken);
                 _logger.LogError("Error in Topic handler", ex);
             }
-        }
-
-        private Task ExceptionReceivedHandler(ExceptionReceivedEventArgs arg)
-        {
-            _logger.LogError("Failed to receive from Auditing message queue", arg.Exception);
-            return Task.CompletedTask;
         }
     }
 }
