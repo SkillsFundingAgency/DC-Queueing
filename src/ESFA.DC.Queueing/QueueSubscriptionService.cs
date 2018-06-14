@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using ESFA.DC.Logging.Interfaces;
@@ -21,7 +22,7 @@ namespace ESFA.DC.Queueing
             _queueConfiguration = queueConfiguration;
         }
 
-        public void Subscribe(Func<T, CancellationToken, Task<IQueueCallbackResult>> callback)
+        public void Subscribe(Func<T, IDictionary<string, object>, CancellationToken, Task<IQueueCallbackResult>> callback)
         {
             if (_receiverClient == null)
             {
