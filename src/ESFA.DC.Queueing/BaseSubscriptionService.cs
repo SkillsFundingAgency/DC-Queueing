@@ -13,7 +13,7 @@ namespace ESFA.DC.Queueing
 {
     public class BaseSubscriptionService<T>
     {
-        protected Func<T, CancellationToken, Task<IQueueCallbackResult>> _callback;
+        protected Func<T, IDictionary<string, object>, CancellationToken, Task<IQueueCallbackResult>> _callback;
 
         protected IReceiverClient _receiverClient;
 
@@ -44,7 +44,7 @@ namespace ESFA.DC.Queueing
                     return;
                 }
 
-                IQueueCallbackResult queueCallbackResult = await _callback.Invoke(obj, cancellationToken);
+                IQueueCallbackResult queueCallbackResult = await _callback.Invoke(obj, message.UserProperties, cancellationToken);
                 if (queueCallbackResult.Result)
                 {
                     await _receiverClient.CompleteAsync(message.SystemProperties.LockToken);
