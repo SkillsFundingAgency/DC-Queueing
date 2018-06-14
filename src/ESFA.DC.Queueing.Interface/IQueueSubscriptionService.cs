@@ -6,7 +6,7 @@ namespace ESFA.DC.Queueing.Interface
 {
     public interface IQueueSubscriptionService<T>
     {
-        void Subscribe(Func<T, CancellationToken, Task<bool>> callback);
+        void Subscribe(Func<T, CancellationToken, Task<IQueueCallbackResult>> callback);
 
         Task UnsubscribeAsync();
     }
