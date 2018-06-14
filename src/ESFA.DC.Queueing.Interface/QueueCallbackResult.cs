@@ -1,7 +1,6 @@
 ﻿using System;
-using ESFA.DC.Queueing.Interface;
 
-namespace ESFA.DC.Queueing
+namespace ESFA.DC.Queueing.Interface
 {
     public sealed class QueueCallbackResult : IQueueCallbackResult
     {
