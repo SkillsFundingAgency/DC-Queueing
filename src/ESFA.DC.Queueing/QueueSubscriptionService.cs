@@ -45,7 +45,7 @@ namespace ESFA.DC.Queueing
             };
 
             _receiverClient.RegisterMessageHandler(Handler, messageHandlerOptions);
-            //_callback = callback;
+            _callback = callback;
         }
 
         public async Task UnsubscribeAsync()
