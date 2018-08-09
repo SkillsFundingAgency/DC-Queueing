@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using ESFA.DC.DateTimeProvider.Interface;
 using ESFA.DC.Logging.Interfaces;
 using ESFA.DC.Queueing.Interface;
+using ESFA.DC.Queueing.Interface.Configuration;
 using ESFA.DC.Serialization.Interfaces;
 using Microsoft.Azure.ServiceBus;
 
@@ -45,7 +46,7 @@ namespace ESFA.DC.Queueing
             {
                 MaxConcurrentCalls = _topicConfiguration.MaxConcurrentCalls,
                 AutoComplete = false,
-                MaxAutoRenewDuration = TimeSpan.FromMinutes(10)
+                MaxAutoRenewDuration = TimeSpan.FromMinutes(_topicConfiguration.MaximumCallbackTimeoutMinutes)
             };
 
             _receiverClient.RegisterMessageHandler(Handler, messageHandlerOptions);

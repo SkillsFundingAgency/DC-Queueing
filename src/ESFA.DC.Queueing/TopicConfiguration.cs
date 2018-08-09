@@ -1,10 +1,10 @@
-﻿using ESFA.DC.Queueing.Interface;
+﻿using ESFA.DC.Queueing.Interface.Configuration;
 
 namespace ESFA.DC.Queueing
 {
     public abstract class TopicConfiguration : ITopicConfiguration
     {
-        protected TopicConfiguration(string connectionString, string topicName, string subscriptionName, int maxConcurrentCalls, int minimumBackoffSeconds = 5, int maximumBackoffSeconds = 50, int maximumRetryCount = 10)
+        protected TopicConfiguration(string connectionString, string topicName, string subscriptionName, int maxConcurrentCalls, int minimumBackoffSeconds = 5, int maximumBackoffSeconds = 50, int maximumRetryCount = 10, int maximumCallbackTimeoutMinutes = 10)
         {
             MaxConcurrentCalls = maxConcurrentCalls;
             ConnectionString = connectionString;
@@ -13,6 +13,7 @@ namespace ESFA.DC.Queueing
             MinimumBackoffSeconds = minimumBackoffSeconds;
             MaximumBackoffSeconds = maximumBackoffSeconds;
             MaximumRetryCount = maximumRetryCount;
+            MaximumCallbackTimeoutMinutes = maximumCallbackTimeoutMinutes;
         }
 
         public string ConnectionString { get; }
@@ -28,5 +29,7 @@ namespace ESFA.DC.Queueing
         public int MaximumBackoffSeconds { get; }
 
         public int MaximumRetryCount { get; }
+
+        public int MaximumCallbackTimeoutMinutes { get; }
     }
 }

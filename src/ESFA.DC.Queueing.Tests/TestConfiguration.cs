@@ -1,4 +1,4 @@
-﻿using ESFA.DC.Queueing.Interface;
+﻿using ESFA.DC.Queueing.Interface.Configuration;
 using FluentAssertions;
 using Xunit;
 
