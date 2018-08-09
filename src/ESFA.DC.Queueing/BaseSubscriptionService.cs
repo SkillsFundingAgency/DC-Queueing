@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using ESFA.DC.DateTimeProvider.Interface;
 using ESFA.DC.Logging.Interfaces;
 using ESFA.DC.Queueing.Interface;
+using ESFA.DC.Queueing.MessageLocking;
 using ESFA.DC.Serialization.Interfaces;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.ServiceBus.Core;
@@ -21,43 +23,61 @@ namespace ESFA.DC.Queueing
 
         private readonly ILogger _logger;
 
-        protected BaseSubscriptionService(ISerializationService serialisationService, ILogger logger)
+        private readonly IDateTimeProvider _dateTimeProvider;
+
+        protected BaseSubscriptionService(ISerializationService serialisationService, ILogger logger, IDateTimeProvider dateTimeProvider)
         {
             _serialisationService = serialisationService;
             _logger = logger;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         protected async Task ExceptionReceivedHandler(ExceptionReceivedEventArgs arg)
         {
-            _logger.LogError("Failed to receive from Auditing message queue", arg.Exception);
+            _logger.LogError("Failed to receive from message queue", arg.Exception);
         }
 
         protected async Task Handler(Message message, CancellationToken cancellationToken)
         {
-            try
-            {
-                T obj = _serialisationService.Deserialize<T>(Encoding.UTF8.GetString(message.Body));
+            CancellationTokenSource cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            CancellationToken cancellationTokenOwned = cancellationTokenSource.Token;
 
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    await _receiverClient.AbandonAsync(message.SystemProperties.LockToken);
-                    return;
-                }
-
-                IQueueCallbackResult queueCallbackResult = await _callback.Invoke(obj, message.UserProperties, cancellationToken);
-                if (queueCallbackResult.Result)
-                {
-                    await _receiverClient.CompleteAsync(message.SystemProperties.LockToken);
-                }
-                else
-                {
-                    await _receiverClient.AbandonAsync(message.SystemProperties.LockToken, GetProperties(message.UserProperties, queueCallbackResult.Exception));
-                }
-            }
-            catch (Exception ex)
+            using (MessageLockManager messageLockManager = new MessageLockManager(
+                _logger,
+                _dateTimeProvider,
+                _receiverClient,
+                new LockMessage(message),
+                cancellationTokenSource,
+                cancellationTokenOwned))
             {
-                await _receiverClient.AbandonAsync(message.SystemProperties.LockToken, GetProperties(message.UserProperties, ex));
-                _logger.LogError("Error in queue handler", ex);
+                try
+                {
+                    await messageLockManager.InitializeSession();
+
+                    T obj = _serialisationService.Deserialize<T>(Encoding.UTF8.GetString(message.Body));
+
+                    if (cancellationTokenOwned.IsCancellationRequested)
+                    {
+                        await messageLockManager.AbandonAsync(new TaskCanceledException());
+                        return;
+                    }
+
+                    IQueueCallbackResult queueCallbackResult =
+                        await _callback.Invoke(obj, message.UserProperties, cancellationTokenOwned);
+                    if (queueCallbackResult.Result)
+                    {
+                        await messageLockManager.CompleteAsync();
+                    }
+                    else
+                    {
+                        await messageLockManager.AbandonAsync(queueCallbackResult.Exception);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    await messageLockManager.AbandonAsync(ex);
+                    _logger.LogError("Error in queue handler", ex);
+                }
             }
         }
 
@@ -66,30 +86,6 @@ namespace ESFA.DC.Queueing
             await _receiverClient.CloseAsync();
             _receiverClient = null;
             _callback = null;
-        }
-
-        private IDictionary<string, object> GetProperties(
-            IDictionary<string, object> messageUserProperties,
-            Exception ex)
-        {
-            if (ex == null)
-            {
-                return null;
-            }
-
-            if (messageUserProperties.TryGetValue("Exceptions", out var exceptions))
-            {
-                exceptions = $"{exceptions}:{ex.GetType().Name}";
-            }
-            else
-            {
-                exceptions = ex.GetType().Name;
-            }
-
-            return new Dictionary<string, object>
-            {
-                { "Exceptions", exceptions }
-            };
         }
     }
 }

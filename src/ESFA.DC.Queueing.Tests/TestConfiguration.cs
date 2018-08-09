@@ -17,7 +17,6 @@ namespace ESFA.DC.Queueing.Tests
             configuration.MaximumRetryCount.Should().Be(10000);
             configuration.MinimumBackoffSeconds.Should().Be(100);
             configuration.QueueName.Should().Be("QueueName");
-            configuration.TopicName.Should().Be("TopicName");
         }
     }
 }

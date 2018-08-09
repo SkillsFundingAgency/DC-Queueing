@@ -23,14 +23,22 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="ESFA.DC.DateTimeProvider.Interface" Version="0.1.5-beta0001" />
     <PackageReference Include="ESFA.DC.Logging" Version="0.1.1-beta0001" />
     <PackageReference Include="ESFA.DC.Queueing.Interface" Version="0.1.7-beta0001" />
     <PackageReference Include="ESFA.DC.Serialization.Interfaces" Version="0.1.4-beta0001" />
-    <PackageReference Include="Microsoft.Azure.ServiceBus" Version="3.0.0" />
+    <PackageReference Include="FluentAssertions" Version="5.3.0" />
+    <PackageReference Include="Microsoft.Azure.ServiceBus" Version="3.0.2" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.0.2">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="WindowsAzure.ServiceBus" Version="4.1.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="FluentAssertions">
+      <HintPath>..\packages\FluentAssertions.5.3.0\lib\net45\FluentAssertions.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>

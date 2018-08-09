@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using ESFA.DC.DateTimeProvider.Interface;
 using ESFA.DC.Logging.Interfaces;
 using ESFA.DC.Queueing.Interface;
 using ESFA.DC.Serialization.Interfaces;
@@ -16,8 +17,9 @@ namespace ESFA.DC.Queueing
         public QueueSubscriptionService(
             IQueueConfiguration queueConfiguration,
             ISerializationService serialisationService,
-            ILogger logger)
-            : base(serialisationService, logger)
+            ILogger logger,
+            IDateTimeProvider dateTimeProvider)
+            : base(serialisationService, logger, dateTimeProvider)
         {
             _queueConfiguration = queueConfiguration;
         }

@@ -1,10 +1,8 @@
-﻿namespace ESFA.DC.Queueing.Interface
+﻿namespace ESFA.DC.Queueing.Interface.Configuration
 {
-    public interface IQueueConfiguration
+    public interface IBaseConfiguration
     {
         string ConnectionString { get; }
-
-        string QueueName { get; }
 
         int MaxConcurrentCalls { get; }
 
@@ -13,5 +11,7 @@
         int MaximumBackoffSeconds { get; }
 
         int MaximumRetryCount { get; }
+
+        int MaximumCallbackTimeoutMinutes { get; }
     }
 }
