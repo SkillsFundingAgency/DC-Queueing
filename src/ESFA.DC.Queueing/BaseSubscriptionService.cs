@@ -17,7 +17,7 @@ namespace ESFA.DC.Queueing
     {
         protected Func<T, IDictionary<string, object>, CancellationToken, Task<IQueueCallbackResult>> _callback;
 
-        protected CancellationToken cancellationTokenSF;
+        protected CancellationToken _cancellationTokenExt;
 
         protected IReceiverClient _receiverClient;
 
@@ -41,7 +41,7 @@ namespace ESFA.DC.Queueing
 
         protected async Task Handler(Message message, CancellationToken cancellationTokenSB)
         {
-            CancellationTokenSource cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSB, cancellationTokenSF);
+            CancellationTokenSource cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSB, _cancellationTokenExt);
             CancellationToken cancellationTokenOwned = cancellationTokenSource.Token;
 
             using (MessageLockManager messageLockManager = new MessageLockManager(
@@ -50,7 +50,7 @@ namespace ESFA.DC.Queueing
                 _receiverClient,
                 new LockMessage(message),
                 cancellationTokenSource,
-                cancellationTokenOwned))
+                cancellationTokenSB))
             {
                 try
                 {
@@ -60,6 +60,7 @@ namespace ESFA.DC.Queueing
 
                     if (cancellationTokenOwned.IsCancellationRequested)
                     {
+                        await messageLockManager.AbandonAsync();
                         return;
                     }
 

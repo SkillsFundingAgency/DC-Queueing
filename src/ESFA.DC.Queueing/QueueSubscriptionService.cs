@@ -25,7 +25,7 @@ namespace ESFA.DC.Queueing
             _queueConfiguration = queueConfiguration;
         }
 
-        public void Subscribe(Func<T, IDictionary<string, object>, CancellationToken, Task<IQueueCallbackResult>> callback)
+        public void Subscribe(Func<T, IDictionary<string, object>, CancellationToken, Task<IQueueCallbackResult>> callback, CancellationToken cancellationToken)
         {
             if (_receiverClient == null)
             {
@@ -48,6 +48,7 @@ namespace ESFA.DC.Queueing
                 MaxAutoRenewDuration = TimeSpan.FromMinutes(_queueConfiguration.MaximumCallbackTimeoutMinutes)
             };
 
+            _cancellationTokenExt = cancellationToken;
             _callback = callback;
             _receiverClient.RegisterMessageHandler(Handler, messageHandlerOptions);
         }

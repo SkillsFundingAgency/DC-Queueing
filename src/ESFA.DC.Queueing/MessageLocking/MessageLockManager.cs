@@ -20,7 +20,7 @@ namespace ESFA.DC.Queueing.MessageLocking
 
         private readonly CancellationTokenSource _cancellationTokenSource;
 
-        private readonly CancellationToken _cancellationToken;
+        private readonly CancellationToken _cancellationTokenSb;
 
         private readonly SemaphoreSlim _locker;
 
@@ -28,14 +28,14 @@ namespace ESFA.DC.Queueing.MessageLocking
 
         private Timer _timer;
 
-        public MessageLockManager(ILogger logger, IDateTimeProvider dateTimeProvider, IReceiverClient receiverClient, LockMessage message, CancellationTokenSource cancellationTokenSource, CancellationToken cancellationToken)
+        public MessageLockManager(ILogger logger, IDateTimeProvider dateTimeProvider, IReceiverClient receiverClient, LockMessage message, CancellationTokenSource cancellationTokenSource, CancellationToken cancellationTokenSB)
         {
             _logger = logger;
             _dateTimeProvider = dateTimeProvider;
             _receiverClient = receiverClient;
             _message = message;
             _cancellationTokenSource = cancellationTokenSource;
-            _cancellationToken = cancellationToken;
+            _cancellationTokenSb = cancellationTokenSB;
             _locker = new SemaphoreSlim(1, 1);
             isMessageActioned = false;
         }
@@ -44,7 +44,7 @@ namespace ESFA.DC.Queueing.MessageLocking
         {
             try
             {
-                AbandonAsync().Wait(_cancellationToken);
+                AbandonAsync().Wait(_cancellationTokenSb);
             }
             catch (Exception ex)
             {
@@ -116,7 +116,7 @@ namespace ESFA.DC.Queueing.MessageLocking
         {
             try
             {
-                await _locker.WaitAsync(_cancellationToken);
+                await _locker.WaitAsync(_cancellationTokenSb);
 
                 if (!CanAction())
                 {
@@ -152,7 +152,7 @@ namespace ESFA.DC.Queueing.MessageLocking
 
         private bool CanAction()
         {
-            if (_cancellationToken.IsCancellationRequested)
+            if (_cancellationTokenSb.IsCancellationRequested)
             {
                 return false;
             }
