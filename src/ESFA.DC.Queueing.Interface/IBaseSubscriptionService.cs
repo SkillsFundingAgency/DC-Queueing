@@ -7,7 +7,7 @@ namespace ESFA.DC.Queueing.Interface
 {
     public interface IBaseSubscriptionService<T>
     {
-        void Subscribe(Func<T, IDictionary<string, object>, CancellationToken, Task<IQueueCallbackResult>> callback);
+        void Subscribe(Func<T, IDictionary<string, object>, CancellationToken, Task<IQueueCallbackResult>> callback, CancellationToken cancellationToken);
 
         Task UnsubscribeAsync();
     }

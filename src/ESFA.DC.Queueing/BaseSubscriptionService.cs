@@ -17,6 +17,8 @@ namespace ESFA.DC.Queueing
     {
         protected Func<T, IDictionary<string, object>, CancellationToken, Task<IQueueCallbackResult>> _callback;
 
+        protected CancellationToken cancellationTokenSF;
+
         protected IReceiverClient _receiverClient;
 
         private readonly ISerializationService _serialisationService;
@@ -37,9 +39,9 @@ namespace ESFA.DC.Queueing
             _logger.LogError("Failed to receive from message queue", arg.Exception);
         }
 
-        protected async Task Handler(Message message, CancellationToken cancellationToken)
+        protected async Task Handler(Message message, CancellationToken cancellationTokenSB)
         {
-            CancellationTokenSource cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            CancellationTokenSource cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSB, cancellationTokenSF);
             CancellationToken cancellationTokenOwned = cancellationTokenSource.Token;
 
             using (MessageLockManager messageLockManager = new MessageLockManager(
@@ -58,7 +60,6 @@ namespace ESFA.DC.Queueing
 
                     if (cancellationTokenOwned.IsCancellationRequested)
                     {
-                        await messageLockManager.AbandonAsync(new TaskCanceledException());
                         return;
                     }
 
@@ -83,7 +84,15 @@ namespace ESFA.DC.Queueing
 
         protected async Task UnsubscribeAndCleanupAsync()
         {
-            await _receiverClient.CloseAsync();
+            try
+            {
+                await _receiverClient.CloseAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Failed to close receiver client", ex);
+            }
+
             _receiverClient = null;
             _callback = null;
         }

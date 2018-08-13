@@ -49,8 +49,8 @@ namespace ESFA.DC.Queueing
                 MaxAutoRenewDuration = TimeSpan.FromMinutes(_topicConfiguration.MaximumCallbackTimeoutMinutes)
             };
 
-            _receiverClient.RegisterMessageHandler(Handler, messageHandlerOptions);
             _callback = callback;
+            _receiverClient.RegisterMessageHandler(Handler, messageHandlerOptions);
         }
 
         public async Task UnsubscribeAsync()

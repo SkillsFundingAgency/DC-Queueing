@@ -42,9 +42,20 @@ namespace ESFA.DC.Queueing.MessageLocking
 
         public void Dispose()
         {
-            AbandonAsync().Wait(_cancellationToken);
+            try
+            {
+                AbandonAsync().Wait(_cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"Failed to dispose message lock manager: {ex}");
+            }
         }
 
+        /// <summary>
+        /// Must be called to setup the message lock manager timer functionality.
+        /// </summary>
+        /// <returns>A task.</returns>
         public async Task InitializeSession()
         {
             TimeSpan lockedUntil = _message.LockedUntilUtc.Subtract(_dateTimeProvider.GetNowUtc());
@@ -66,16 +77,28 @@ namespace ESFA.DC.Queueing.MessageLocking
             _timer = new Timer(Callback, null, renewInterval, TimeSpan.FromMilliseconds(-1));
         }
 
+        /// <summary>
+        /// Completes the message if the message has not previously been actioned and cancellation has not been requested.
+        /// </summary>
+        /// <returns>A task.</returns>
         public async Task CompleteAsync()
         {
             await DoActionAsync(MessageAction.Complete);
         }
 
+        /// <summary>
+        /// Abandons the message if the message has not previously been actioned and cancellation has not been requested.
+        /// </summary>
+        /// <returns>A task.</returns>
         public async Task AbandonAsync(Exception ex = null)
         {
             await DoActionAsync(MessageAction.Abandon, ex);
         }
 
+        /// <summary>
+        /// Dead letters the message if the message has not previously been actioned and cancellation has not been requested.
+        /// </summary>
+        /// <returns>A task.</returns>
         public async Task DeadLetterAsync(Exception ex = null)
         {
             await DoActionAsync(MessageAction.DeadLetter, ex);
