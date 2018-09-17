@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using ESFA.DC.DateTimeProvider.Interface;
 using ESFA.DC.Logging.Interfaces;
+using ESFA.DC.Queueing.Interface.Configuration;
 using ESFA.DC.Queueing.MessageLocking;
 using FluentAssertions;
 using Microsoft.Azure.ServiceBus.Core;
@@ -17,29 +17,27 @@ namespace ESFA.DC.Queueing.Tests.MessageLocking
         [Fact]
         public async Task TestTimeout()
         {
-            DateTime now = DateTime.UtcNow;
-            DateTime nowFuture = now.AddSeconds(5);
             string messageId = Guid.NewGuid().ToString();
             string lockToken = Guid.NewGuid().ToString();
             bool abandoned = false;
 
             Mock<ILogger> loggerMock = new Mock<ILogger>();
             Mock<IReceiverClient> receiverClientMock = new Mock<IReceiverClient>();
-            Mock<IDateTimeProvider> dateTimeProvider = new Mock<IDateTimeProvider>();
+            Mock<IBaseConfiguration> baseConfigurationMock = new Mock<IBaseConfiguration>();
             receiverClientMock.Setup(x => x.AbandonAsync(It.IsAny<string>(), It.IsAny<IDictionary<string, object>>()))
                 .Callback<string, IDictionary<string, object>>(
                     (l, d) => { abandoned = true; }).Returns(Task.CompletedTask);
-            dateTimeProvider.Setup(x => x.GetNowUtc()).Returns(now);
+            baseConfigurationMock.SetupGet(c => c.MaximumCallbackTimeoutMinutes).Returns(1);
 
-            LockMessage msg = new LockMessage(nowFuture, messageId, lockToken, new Dictionary<string, object>());
+            LockMessage msg = new LockMessage(messageId, lockToken, new Dictionary<string, object>());
 
             CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
             CancellationToken cancellationToken = cancellationTokenSource.Token;
 
-            MessageLockManager messageLockManager = new MessageLockManager(loggerMock.Object, dateTimeProvider.Object, receiverClientMock.Object, msg, cancellationTokenSource, cancellationToken);
+            MessageLockManager messageLockManager = new MessageLockManager(loggerMock.Object, receiverClientMock.Object, baseConfigurationMock.Object, msg, cancellationTokenSource, cancellationToken);
             await messageLockManager.InitializeSession();
 
-            await Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None);
+            await Task.Delay(TimeSpan.FromSeconds(60), CancellationToken.None);
 
             abandoned.Should().BeTrue();
             cancellationToken.IsCancellationRequested.Should().BeTrue();

@@ -1,4 +1,6 @@
-﻿namespace ESFA.DC.Queueing.Interface.Configuration
+﻿using System;
+
+namespace ESFA.DC.Queueing.Interface.Configuration
 {
     public interface IBaseConfiguration
     {
@@ -12,6 +14,6 @@
 
         int MaximumRetryCount { get; }
 
-        int MaximumCallbackTimeoutMinutes { get; }
+        TimeSpan MaximumCallbackTimeSpan { get; }
     }
 }

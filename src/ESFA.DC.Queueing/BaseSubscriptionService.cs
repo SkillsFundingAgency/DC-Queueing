@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using ESFA.DC.DateTimeProvider.Interface;
 using ESFA.DC.Logging.Interfaces;
 using ESFA.DC.Queueing.Interface;
+using ESFA.DC.Queueing.Interface.Configuration;
 using ESFA.DC.Queueing.MessageLocking;
 using ESFA.DC.Serialization.Interfaces;
 using Microsoft.Azure.ServiceBus;
@@ -13,7 +13,7 @@ using Microsoft.Azure.ServiceBus.Core;
 
 namespace ESFA.DC.Queueing
 {
-    public class BaseSubscriptionService<T>
+    public abstract class BaseSubscriptionService<T>
     {
         protected Func<T, IDictionary<string, object>, CancellationToken, Task<IQueueCallbackResult>> _callback;
 
@@ -25,13 +25,13 @@ namespace ESFA.DC.Queueing
 
         private readonly ILogger _logger;
 
-        private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IBaseConfiguration _configuration;
 
-        protected BaseSubscriptionService(ISerializationService serialisationService, ILogger logger, IDateTimeProvider dateTimeProvider)
+        protected BaseSubscriptionService(ISerializationService serialisationService, ILogger logger, IBaseConfiguration configuration)
         {
             _serialisationService = serialisationService;
             _logger = logger;
-            _dateTimeProvider = dateTimeProvider;
+            _configuration = configuration;
         }
 
         protected async Task ExceptionReceivedHandler(ExceptionReceivedEventArgs arg)
@@ -46,8 +46,8 @@ namespace ESFA.DC.Queueing
 
             using (MessageLockManager messageLockManager = new MessageLockManager(
                 _logger,
-                _dateTimeProvider,
                 _receiverClient,
+                _configuration,
                 new LockMessage(message),
                 cancellationTokenSource,
                 cancellationTokenSB))

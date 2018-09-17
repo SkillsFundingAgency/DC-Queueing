@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using ESFA.DC.DateTimeProvider.Interface;
 using ESFA.DC.Logging.Interfaces;
+using ESFA.DC.Queueing.Interface.Configuration;
 using Microsoft.Azure.ServiceBus.Core;
 
 namespace ESFA.DC.Queueing.MessageLocking
@@ -12,9 +12,9 @@ namespace ESFA.DC.Queueing.MessageLocking
     {
         private readonly ILogger _logger;
 
-        private readonly IDateTimeProvider _dateTimeProvider;
-
         private readonly IReceiverClient _receiverClient;
+
+        private readonly IBaseConfiguration _subscriberConfiguration;
 
         private readonly LockMessage _message;
 
@@ -28,11 +28,11 @@ namespace ESFA.DC.Queueing.MessageLocking
 
         private Timer _timer;
 
-        public MessageLockManager(ILogger logger, IDateTimeProvider dateTimeProvider, IReceiverClient receiverClient, LockMessage message, CancellationTokenSource cancellationTokenSource, CancellationToken cancellationTokenSB)
+        public MessageLockManager(ILogger logger, IReceiverClient receiverClient, IBaseConfiguration subscriberConfiguration, LockMessage message, CancellationTokenSource cancellationTokenSource, CancellationToken cancellationTokenSB)
         {
             _logger = logger;
-            _dateTimeProvider = dateTimeProvider;
             _receiverClient = receiverClient;
+            _subscriberConfiguration = subscriberConfiguration;
             _message = message;
             _cancellationTokenSource = cancellationTokenSource;
             _cancellationTokenSb = cancellationTokenSB;
@@ -58,10 +58,10 @@ namespace ESFA.DC.Queueing.MessageLocking
         /// <returns>A task.</returns>
         public async Task InitializeSession()
         {
-            TimeSpan lockedUntil = _message.LockedUntilUtc.Subtract(_dateTimeProvider.GetNowUtc());
+            TimeSpan lockSpan = TimeSpan.FromMinutes(_subscriberConfiguration.MaximumCallbackTimeoutMinutes);
             TimeSpan renewInterval = new TimeSpan(
                 (long)Math.Round(
-                    lockedUntil.Ticks * 0.9,
+                    lockSpan.Ticks * 0.9,
                     0,
                     MidpointRounding.AwayFromZero));
 

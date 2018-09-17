@@ -9,14 +9,15 @@ namespace ESFA.DC.Queueing.Tests
         [Fact]
         public void TestConfigurationObject()
         {
-            IQueueConfiguration configuration = new TestQueueConfiguration("ConnectionString", "QueueName", 10, "TopicName", "SubscriptionName", 100, 1000, 10000);
+            IQueueConfiguration configuration = new QueueConfiguration("ConnectionString", "QueueName", 10, 20, 30, 40, 50);
 
             configuration.MaxConcurrentCalls.Should().Be(10);
             configuration.ConnectionString.Should().Be("ConnectionString");
-            configuration.MaximumBackoffSeconds.Should().Be(1000);
-            configuration.MaximumRetryCount.Should().Be(10000);
-            configuration.MinimumBackoffSeconds.Should().Be(100);
+            configuration.MaximumBackoffSeconds.Should().Be(30);
+            configuration.MaximumRetryCount.Should().Be(40);
+            configuration.MinimumBackoffSeconds.Should().Be(20);
             configuration.QueueName.Should().Be("QueueName");
+            configuration.MaximumCallbackTimeoutMinutes.Should().Be(50);
         }
     }
 }
