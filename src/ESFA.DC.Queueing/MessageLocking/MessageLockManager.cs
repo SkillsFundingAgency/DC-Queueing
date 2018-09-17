@@ -58,10 +58,9 @@ namespace ESFA.DC.Queueing.MessageLocking
         /// <returns>A task.</returns>
         public async Task InitializeSession()
         {
-            TimeSpan lockSpan = TimeSpan.FromMinutes(_subscriberConfiguration.MaximumCallbackTimeoutMinutes);
             TimeSpan renewInterval = new TimeSpan(
                 (long)Math.Round(
-                    lockSpan.Ticks * 0.9,
+                    _subscriberConfiguration.MaximumCallbackTimeSpan.Ticks * 0.9,
                     0,
                     MidpointRounding.AwayFromZero));
 

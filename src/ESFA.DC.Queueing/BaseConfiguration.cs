@@ -7,14 +7,14 @@ namespace ESFA.DC.Queueing
 {
     public abstract class BaseConfiguration : IBaseConfiguration
     {
-        protected BaseConfiguration(string connectionString, int maxConcurrentCalls, int minimumBackoffSeconds = 5, int maximumBackoffSeconds = 50, int maximumRetryCount = 10, int maximumCallbackTimeoutMinutes = 10)
+        protected BaseConfiguration(string connectionString, int maxConcurrentCalls, int minimumBackoffSeconds = 5, int maximumBackoffSeconds = 50, int maximumRetryCount = 10, TimeSpan? maximumCallbackTimeSpan = null)
         {
             ConnectionString = connectionString;
             MaxConcurrentCalls = maxConcurrentCalls;
             MinimumBackoffSeconds = minimumBackoffSeconds;
             MaximumBackoffSeconds = maximumBackoffSeconds;
             MaximumRetryCount = maximumRetryCount;
-            MaximumCallbackTimeoutMinutes = maximumCallbackTimeoutMinutes;
+            MaximumCallbackTimeSpan = maximumCallbackTimeSpan ?? new TimeSpan(0, 10, 0);
         }
 
         public string ConnectionString { get; }
@@ -27,6 +27,6 @@ namespace ESFA.DC.Queueing
 
         public int MaximumRetryCount { get; }
 
-        public int MaximumCallbackTimeoutMinutes { get; }
+        public TimeSpan MaximumCallbackTimeSpan { get; }
     }
 }

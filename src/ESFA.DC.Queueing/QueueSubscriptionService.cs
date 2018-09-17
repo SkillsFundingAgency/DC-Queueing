@@ -43,7 +43,7 @@ namespace ESFA.DC.Queueing
             {
                 MaxConcurrentCalls = _queueConfiguration.MaxConcurrentCalls,
                 AutoComplete = false,
-                MaxAutoRenewDuration = TimeSpan.FromMinutes(_queueConfiguration.MaximumCallbackTimeoutMinutes)
+                MaxAutoRenewDuration = _queueConfiguration.MaximumCallbackTimeSpan
             };
 
             _cancellationTokenExt = cancellationToken;

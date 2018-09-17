@@ -27,7 +27,7 @@ namespace ESFA.DC.Queueing.Tests.MessageLocking
             receiverClientMock.Setup(x => x.AbandonAsync(It.IsAny<string>(), It.IsAny<IDictionary<string, object>>()))
                 .Callback<string, IDictionary<string, object>>(
                     (l, d) => { abandoned = true; }).Returns(Task.CompletedTask);
-            baseConfigurationMock.SetupGet(c => c.MaximumCallbackTimeoutMinutes).Returns(1);
+            baseConfigurationMock.SetupGet(c => c.MaximumCallbackTimeSpan).Returns(new TimeSpan(0, 0, 5));
 
             LockMessage msg = new LockMessage(messageId, lockToken, new Dictionary<string, object>());
 
@@ -37,7 +37,7 @@ namespace ESFA.DC.Queueing.Tests.MessageLocking
             MessageLockManager messageLockManager = new MessageLockManager(loggerMock.Object, receiverClientMock.Object, baseConfigurationMock.Object, msg, cancellationTokenSource, cancellationToken);
             await messageLockManager.InitializeSession();
 
-            await Task.Delay(TimeSpan.FromSeconds(60), CancellationToken.None);
+            await Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None);
 
             abandoned.Should().BeTrue();
             cancellationToken.IsCancellationRequested.Should().BeTrue();
