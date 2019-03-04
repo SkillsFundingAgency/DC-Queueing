@@ -65,7 +65,7 @@ namespace ESFA.DC.Queueing
 
                 try
                 {
-                    if (!await messageLockManager.InitializeSession())
+                    if (!await messageLockManager.InitializeSession(TimeSpan.FromMinutes(1)))
                     {
                         await messageLockManager.AbandonAsync();
                         return;

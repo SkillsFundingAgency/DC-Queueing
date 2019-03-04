@@ -78,7 +78,7 @@ namespace ESFA.DC.Queueing.MessageLocking
         /// Must be called to setup the message lock manager timer functionality.
         /// </summary>
         /// <returns>A task.</returns>
-        public async Task<bool> InitializeSession()
+        public async Task<bool> InitializeSession(TimeSpan checkInterval)
         {
             TimeSpan renewInterval = new TimeSpan(
                 (long)Math.Round(
@@ -96,7 +96,7 @@ namespace ESFA.DC.Queueing.MessageLocking
 
             _logger.LogInfo($"Message {_message.MessageId} will be given {renewInterval.Minutes} minutes {renewInterval.Seconds} seconds to execute before automatic cancellation.");
 
-            _timer = new Timer(Callback, null, TimeSpan.FromMinutes(1), TimeSpan.FromMilliseconds(-1));
+            _timer = new Timer(Callback, null, checkInterval, TimeSpan.FromMilliseconds(-1));
             return true;
         }
 
