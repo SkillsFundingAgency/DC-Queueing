@@ -5,12 +5,8 @@ using System.Threading.Tasks;
 using ESFA.DC.Logging.Interfaces;
 using ESFA.DC.Queueing.Interface;
 using ESFA.DC.Queueing.Interface.Configuration;
-using ESFA.DC.Queueing.MessageLocking;
 using ESFA.DC.Serialization.Interfaces;
 using Microsoft.Azure.ServiceBus;
-using Microsoft.ServiceBus.Messaging;
-using ReceiveMode = Microsoft.Azure.ServiceBus.ReceiveMode;
-using SubscriptionClient = Microsoft.Azure.ServiceBus.SubscriptionClient;
 
 namespace ESFA.DC.Queueing
 {
