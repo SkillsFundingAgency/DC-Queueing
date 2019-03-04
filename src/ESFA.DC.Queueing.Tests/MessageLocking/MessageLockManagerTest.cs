@@ -34,7 +34,7 @@ namespace ESFA.DC.Queueing.Tests.MessageLocking
             CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
             CancellationToken cancellationToken = cancellationTokenSource.Token;
 
-            MessageLockManager messageLockManager = new MessageLockManager(loggerMock.Object, receiverClientMock.Object, baseConfigurationMock.Object, msg, cancellationTokenSource, cancellationToken);
+            MessageLockManager messageLockManager = new MessageLockManager(loggerMock.Object, receiverClientMock.Object, baseConfigurationMock.Object, msg, null, cancellationTokenSource, cancellationToken);
             await messageLockManager.InitializeSession();
 
             await Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None);

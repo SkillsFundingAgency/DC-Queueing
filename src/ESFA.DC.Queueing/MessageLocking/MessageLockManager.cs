@@ -18,37 +18,59 @@ namespace ESFA.DC.Queueing.MessageLocking
 
         private readonly LockMessage _message;
 
+        private readonly MessageRenewalService _messageRenewalService;
+
         private readonly CancellationTokenSource _cancellationTokenSource;
 
         private readonly CancellationToken _cancellationTokenSb;
 
-        private readonly SemaphoreSlim _locker;
+        private readonly SemaphoreSlim _lockerSingleAction;
 
-        private bool isMessageActioned;
+        private readonly object _lockerTimerStop;
+
+        private readonly ManualResetEvent _lockerTimerDead;
+
+        private bool _isMessageActioned;
 
         private Timer _timer;
 
-        public MessageLockManager(ILogger logger, IReceiverClient receiverClient, IBaseConfiguration subscriberConfiguration, LockMessage message, CancellationTokenSource cancellationTokenSource, CancellationToken cancellationTokenSB)
+        private DateTime _cancelDateTimeUtc;
+
+        public MessageLockManager(
+            ILogger logger,
+            IReceiverClient receiverClient,
+            IBaseConfiguration subscriberConfiguration,
+            LockMessage message,
+            MessageRenewalService messageRenewalService,
+            CancellationTokenSource cancellationTokenSource,
+            CancellationToken cancellationTokenSB)
         {
             _logger = logger;
             _receiverClient = receiverClient;
             _subscriberConfiguration = subscriberConfiguration;
             _message = message;
+            _messageRenewalService = messageRenewalService;
             _cancellationTokenSource = cancellationTokenSource;
             _cancellationTokenSb = cancellationTokenSB;
-            _locker = new SemaphoreSlim(1, 1);
-            isMessageActioned = false;
+            _lockerSingleAction = new SemaphoreSlim(1, 1);
+            _isMessageActioned = false;
+            _lockerTimerStop = new object();
+            _lockerTimerDead = new ManualResetEvent(false);
         }
 
         public void Dispose()
         {
             try
             {
+                // Stop and dispose the timer
+                StopTimer();
+
+                // Abandon the message if no other action was performed at this point!
                 AbandonAsync().Wait(_cancellationTokenSb);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning($"Failed to dispose message lock manager: {ex}");
+                _logger.LogError("Failed to dispose message lock manager", ex);
             }
         }
 
@@ -56,7 +78,7 @@ namespace ESFA.DC.Queueing.MessageLocking
         /// Must be called to setup the message lock manager timer functionality.
         /// </summary>
         /// <returns>A task.</returns>
-        public async Task InitializeSession()
+        public async Task<bool> InitializeSession()
         {
             TimeSpan renewInterval = new TimeSpan(
                 (long)Math.Round(
@@ -66,14 +88,16 @@ namespace ESFA.DC.Queueing.MessageLocking
 
             if (renewInterval.TotalMilliseconds < 0)
             {
-                _logger.LogError($"Invalid message lock renewel value {renewInterval} for message {_message.MessageId}. Rejecting message.");
-                await DoActionAsync(MessageAction.Abandon);
-                return;
+                _logger.LogError($"Invalid message lock renewal value {renewInterval} for message {_message.MessageId}. Rejecting message.");
+                return false;
             }
 
-            _logger.LogInfo($"Message {_message.MessageId} will be given {renewInterval.Minutes} minutes to execute before automatic cancellation.");
+            _cancelDateTimeUtc = DateTime.UtcNow.AddMilliseconds(renewInterval.TotalMilliseconds);
 
-            _timer = new Timer(Callback, null, renewInterval, TimeSpan.FromMilliseconds(-1));
+            _logger.LogInfo($"Message {_message.MessageId} will be given {renewInterval.Minutes} minutes {renewInterval.Seconds} seconds to execute before automatic cancellation.");
+
+            _timer = new Timer(Callback, null, TimeSpan.FromMinutes(1), TimeSpan.FromMilliseconds(-1));
+            return true;
         }
 
         /// <summary>
@@ -105,17 +129,31 @@ namespace ESFA.DC.Queueing.MessageLocking
 
         private void Callback(object state)
         {
-            _logger.LogWarning($"Message {_message.MessageId} did not process in expected time, it will be abandoned and work cancelled.");
-            _timer?.Change(Timeout.Infinite, Timeout.Infinite);
-            AbandonAsync().Wait(CancellationToken.None); // Timer will be disposed
-            _cancellationTokenSource.Cancel(); // Cancel at the end so that we don't prevent processing of the message
+            lock (_lockerTimerStop)
+            {
+                if (_lockerTimerDead.WaitOne(0))
+                {
+                    return;
+                }
+
+                if (DateTime.UtcNow >= _cancelDateTimeUtc)
+                {
+                    _logger.LogWarning($"Message {_message.MessageId} did not process in expected time, it will be abandoned and work cancelled.");
+                    _timer?.Change(Timeout.Infinite, Timeout.Infinite);
+                    _cancellationTokenSource.Cancel(); // Cancel at the end so that we don't prevent processing of the message
+                    return;
+                }
+
+                _messageRenewalService?.RenewMessage(_message);
+                _timer.Change(TimeSpan.FromMinutes(1), TimeSpan.FromMilliseconds(-1));
+            }
         }
 
         private async Task DoActionAsync(MessageAction messageAction, Exception ex = null)
         {
             try
             {
-                await _locker.WaitAsync(_cancellationTokenSb);
+                await _lockerSingleAction.WaitAsync(_cancellationTokenSb);
 
                 if (!CanAction())
                 {
@@ -137,7 +175,7 @@ namespace ESFA.DC.Queueing.MessageLocking
                         throw new ArgumentOutOfRangeException(nameof(messageAction), messageAction, null);
                 }
 
-                isMessageActioned = true;
+                _isMessageActioned = true;
             }
             catch (Exception ex2)
             {
@@ -145,7 +183,7 @@ namespace ESFA.DC.Queueing.MessageLocking
             }
             finally
             {
-                _locker.Release();
+                _lockerSingleAction.Release();
             }
         }
 
@@ -156,13 +194,12 @@ namespace ESFA.DC.Queueing.MessageLocking
                 return false;
             }
 
-            if (isMessageActioned)
+            if (_isMessageActioned)
             {
                 return false;
             }
 
-            _timer?.Dispose();
-            _timer = null;
+            StopTimer();
 
             if (_message == null)
             {
@@ -170,6 +207,16 @@ namespace ESFA.DC.Queueing.MessageLocking
             }
 
             return true;
+        }
+
+        private void StopTimer()
+        {
+            lock (_lockerTimerStop)
+            {
+                _lockerTimerDead.Set();
+                _timer?.Dispose(); // May already be disposed
+                _timer = null;
+            }
         }
 
         private IDictionary<string, object> GetProperties(

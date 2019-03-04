@@ -27,11 +27,18 @@ namespace ESFA.DC.Queueing
 
         private readonly IBaseConfiguration _configuration;
 
-        protected BaseSubscriptionService(ISerializationService serialisationService, ILogger logger, IBaseConfiguration configuration)
+        private readonly MessageRenewalConfiguration _messageRenewalConfiguration;
+
+        protected BaseSubscriptionService(
+            ISerializationService serialisationService,
+            ILogger logger,
+            IBaseConfiguration configuration,
+            string entityPath)
         {
             _serialisationService = serialisationService;
             _logger = logger;
             _configuration = configuration;
+            _messageRenewalConfiguration = GetRenewUrl(configuration.ConnectionString, entityPath);
         }
 
         protected async Task ExceptionReceivedHandler(ExceptionReceivedEventArgs arg)
@@ -49,12 +56,20 @@ namespace ESFA.DC.Queueing
                 _receiverClient,
                 _configuration,
                 new LockMessage(message),
+                new MessageRenewalService(_messageRenewalConfiguration, _logger),
                 cancellationTokenSource,
                 cancellationTokenSB))
             {
+                IQueueCallbackResult queueCallbackResult = null;
+                Exception exception = null;
+
                 try
                 {
-                    await messageLockManager.InitializeSession();
+                    if (!await messageLockManager.InitializeSession())
+                    {
+                        await messageLockManager.AbandonAsync();
+                        return;
+                    }
 
                     T obj = _serialisationService.Deserialize<T>(Encoding.UTF8.GetString(message.Body));
 
@@ -64,21 +79,22 @@ namespace ESFA.DC.Queueing
                         return;
                     }
 
-                    IQueueCallbackResult queueCallbackResult =
-                        await _callback.Invoke(obj, message.UserProperties, cancellationTokenOwned);
-                    if (queueCallbackResult.Result)
-                    {
-                        await messageLockManager.CompleteAsync();
-                    }
-                    else
-                    {
-                        await messageLockManager.AbandonAsync(queueCallbackResult.Exception);
-                    }
+                    queueCallbackResult = await _callback.Invoke(obj, message.UserProperties, cancellationTokenOwned);
+                    exception = queueCallbackResult.Exception;
                 }
                 catch (Exception ex)
                 {
-                    await messageLockManager.AbandonAsync(ex);
+                    exception = ex;
                     _logger.LogError("Error in queue handler", ex);
+                }
+
+                if (queueCallbackResult?.Result == true)
+                {
+                    await messageLockManager.CompleteAsync();
+                }
+                else
+                {
+                    await messageLockManager.AbandonAsync(exception);
                 }
             }
         }
@@ -96,6 +112,15 @@ namespace ESFA.DC.Queueing
 
             _receiverClient = null;
             _callback = null;
+        }
+
+        private static MessageRenewalConfiguration GetRenewUrl(string connectionString, string entityPath)
+        {
+            string[] tokens = connectionString.Split(';');
+            string url = "https://" + tokens[0].Substring("Endpoint=sb://".Length) + entityPath;
+            string keyName = tokens[1].Substring("SharedAccessKeyName=".Length);
+            string key = tokens[2].Substring("SharedAccessKey=".Length);
+            return new MessageRenewalConfiguration(url, keyName, key);
         }
     }
 }

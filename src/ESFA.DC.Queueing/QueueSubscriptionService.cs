@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using ESFA.DC.Logging.Interfaces;
 using ESFA.DC.Queueing.Interface;
 using ESFA.DC.Queueing.Interface.Configuration;
+using ESFA.DC.Queueing.MessageLocking;
 using ESFA.DC.Serialization.Interfaces;
 using Microsoft.Azure.ServiceBus;
 
@@ -18,7 +19,7 @@ namespace ESFA.DC.Queueing
             IQueueConfiguration queueConfiguration,
             ISerializationService serialisationService,
             ILogger logger)
-            : base(serialisationService, logger, queueConfiguration)
+            : base(serialisationService, logger, queueConfiguration, queueConfiguration.QueueName)
         {
             _queueConfiguration = queueConfiguration;
         }
